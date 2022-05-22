@@ -32,10 +32,6 @@ impl Sandbox for Exit {
         String::from("Exit - Iced")
     }
 
-    fn should_exit(&self) -> bool {
-        self.exit
-    }
-
     fn update(&mut self, message: Message) {
         match message {
             Message::Confirm => {
@@ -80,5 +76,9 @@ impl Sandbox for Exit {
             .center_x()
             .center_y()
             .into()
+    }
+
+    fn should_exit(&self) -> bool {
+        self.exit
     }
 }
