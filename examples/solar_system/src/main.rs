@@ -6,10 +6,16 @@
 //! Inspired by the example found in the MDN docs[1].
 //!
 //! [1]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_animations#An_animated_solar_system
+use iced::application;
+use iced::executor;
+use iced::theme::{self, Theme};
+use iced::time;
+use iced::widget::canvas;
+use iced::widget::canvas::{Cursor, Path, Stroke};
+use iced::window;
 use iced::{
-    canvas::{self, Cursor, Path, Stroke},
-    executor, time, window, Application, Canvas, Color, Command, Element,
-    Length, Point, Rectangle, Settings, Size, Subscription, Vector,
+    Application, Color, Command, Element, Length, Point, Rectangle, Settings,
+    Size, Subscription, Vector,
 };
 
 use std::time::Instant;
@@ -31,8 +37,9 @@ enum Message {
 }
 
 impl Application for SolarSystem {
-    type Executor = executor::Default;
     type Message = Message;
+    type Theme = Theme;
+    type Executor = executor::Default;
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
@@ -59,15 +66,25 @@ impl Application for SolarSystem {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        time::every(std::time::Duration::from_millis(10))
-            .map(|instant| Message::Tick(instant))
+        time::every(std::time::Duration::from_millis(10)).map(Message::Tick)
     }
 
-    fn view(&mut self) -> Element<Message> {
-        Canvas::new(&mut self.state)
+    fn view(&self) -> Element<Message> {
+        canvas(&self.state)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
+    }
+
+    fn theme(&self) -> Theme {
+        Theme::Dark
+    }
+
+    fn style(&self) -> theme::Application {
+        theme::Application::Custom(|_theme| application::Appearance {
+            background_color: Color::BLACK,
+            text_color: Color::WHITE,
+        })
     }
 }
 
@@ -129,23 +146,23 @@ impl State {
 }
 
 impl<Message> canvas::Program<Message> for State {
+    type State = ();
+
     fn draw(
         &self,
+        _state: &Self::State,
+        _theme: &Theme,
         bounds: Rectangle,
         _cursor: Cursor,
     ) -> Vec<canvas::Geometry> {
         use std::f32::consts::PI;
 
         let background = self.space_cache.draw(bounds.size(), |frame| {
-            let space = Path::rectangle(Point::new(0.0, 0.0), frame.size());
-
             let stars = Path::new(|path| {
                 for (p, size) in &self.stars {
                     path.rectangle(*p, Size::new(*size, *size));
                 }
             });
-
-            frame.fill(&space, Color::BLACK);
 
             frame.translate(frame.center() - Point::ORIGIN);
             frame.fill(&stars, Color::WHITE);
