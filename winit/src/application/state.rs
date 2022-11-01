@@ -1,6 +1,6 @@
 use crate::application::{self, StyleSheet as _};
 use crate::conversion;
-use crate::{Application, Color, Debug, Mode, Point, Size, Viewport};
+use crate::{Application, Color, Debug, Point, Size, Viewport};
 
 use std::marker::PhantomData;
 use winit::event::{Touch, WindowEvent};
@@ -13,7 +13,6 @@ where
     <A::Renderer as crate::Renderer>::Theme: application::StyleSheet,
 {
     title: String,
-    mode: Mode,
     scale_factor: f64,
     viewport: Viewport,
     viewport_version: usize,
@@ -31,7 +30,6 @@ where
     /// Creates a new [`State`] for the provided [`Application`] and window.
     pub fn new(application: &A, window: &Window) -> Self {
         let title = application.title();
-        let mode = application.mode();
         let scale_factor = application.scale_factor();
         let theme = application.theme();
         let appearance = theme.appearance(application.style());
@@ -47,7 +45,6 @@ where
 
         Self {
             title,
-            mode,
             scale_factor,
             viewport,
             viewport_version: 0,
@@ -193,30 +190,20 @@ where
             self.title = new_title;
         }
 
-        // Update window mode
-        let new_mode = application.mode();
-
-        if self.mode != new_mode {
-            window.set_fullscreen(conversion::fullscreen(
-                window.current_monitor(),
-                new_mode,
-            ));
-
-            window.set_visible(conversion::visible(new_mode));
-
-            self.mode = new_mode;
-        }
-
-        // Update scale factor
+        // Update scale factor and size
         let new_scale_factor = application.scale_factor();
+        let new_size = window.inner_size();
+        let current_size = self.viewport.physical_size();
 
-        if self.scale_factor != new_scale_factor {
-            let size = window.inner_size();
-
+        if self.scale_factor != new_scale_factor
+            || (current_size.width, current_size.height)
+                != (new_size.width, new_size.height)
+        {
             self.viewport = Viewport::with_physical_size(
-                Size::new(size.width, size.height),
+                Size::new(new_size.width, new_size.height),
                 window.scale_factor() * new_scale_factor,
             );
+            self.viewport_version = self.viewport_version.wrapping_add(1);
 
             self.scale_factor = new_scale_factor;
         }

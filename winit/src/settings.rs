@@ -14,7 +14,7 @@ mod platform;
 pub use platform::PlatformSpecific;
 
 use crate::conversion;
-use crate::{Mode, Position};
+use crate::Position;
 use winit::monitor::MonitorHandle;
 use winit::window::WindowBuilder;
 
@@ -65,6 +65,9 @@ pub struct Window {
     /// The maximum size of the window.
     pub max_size: Option<(u32, u32)>,
 
+    /// Whether the window should be visible or not.
+    pub visible: bool,
+
     /// Whether the window should be resizable or not.
     pub resizable: bool,
 
@@ -89,7 +92,6 @@ impl Window {
     pub fn into_builder(
         self,
         title: &str,
-        mode: Mode,
         primary_monitor: Option<MonitorHandle>,
         _id: Option<String>,
     ) -> WindowBuilder {
@@ -105,7 +107,7 @@ impl Window {
             .with_transparent(self.transparent)
             .with_window_icon(self.icon)
             .with_always_on_top(self.always_on_top)
-            .with_visible(conversion::visible(mode));
+            .with_visible(self.visible);
 
         if let Some(position) = conversion::position(
             primary_monitor.as_ref(),
@@ -136,7 +138,7 @@ impl Window {
             use ::winit::platform::unix::WindowBuilderExtUnix;
 
             if let Some(id) = _id {
-                window_builder = window_builder.with_app_id(id);
+                window_builder = window_builder.with_name(id.clone(), id);
             }
         }
 
@@ -166,9 +168,6 @@ impl Window {
                 );
         }
 
-        window_builder = window_builder
-            .with_fullscreen(conversion::fullscreen(primary_monitor, mode));
-
         window_builder
     }
 }
@@ -180,6 +179,7 @@ impl Default for Window {
             position: Position::default(),
             min_size: None,
             max_size: None,
+            visible: true,
             resizable: true,
             decorations: true,
             transparent: false,

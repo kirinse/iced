@@ -15,7 +15,7 @@ resolver = "2"
 [features]
 default = ["wgpu"]
 # Enables the `Image` widget
-image = ["iced_wgpu/image"]
+image = ["iced_wgpu/image", "image_rs"]
 # Enables the `Svg` widget
 svg = ["iced_wgpu/svg"]
 # Enables the `Canvas` widget
@@ -72,12 +72,14 @@ members = [
     "examples/geometry",
     "examples/integration_opengl",
     "examples/integration_wgpu",
+    "examples/multitouch",
     "examples/pane_grid",
     "examples/pick_list",
     "examples/pokedex",
     "examples/progress_bar",
     "examples/qr_code",
     "examples/scrollable",
+    "examples/sierpinski_triangle",
     "examples/solar_system",
     "examples/stopwatch",
     "examples/styling",
@@ -95,10 +97,15 @@ iced_core = { version = "0.5", path = "core" }
 iced_futures = { version = "0.4", path = "futures" }
 iced_native = { version = "0.5", path = "native" }
 iced_graphics = { version = "0.3", path = "graphics" }
-iced_winit = { version = "0.4", path = "winit" }
+iced_winit = { version = "0.4", path = "winit", features = ["application"] }
 iced_glutin = { version = "0.3", path = "glutin", optional = true }
 iced_glow = { version = "0.3", path = "glow", optional = true }
 thiserror = "1.0"
+
+[dependencies.image_rs]
+version = "0.23"
+package = "image"
+optional = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iced_wgpu = { version = "0.5", path = "wgpu", optional = true }
@@ -108,7 +115,7 @@ iced_wgpu = { version = "0.5", path = "wgpu", features = ["webgl"], optional = t
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
-features = ["image", "svg", "canvas", "qr_code", "pure"]
+features = ["image", "svg", "canvas", "qr_code"]
 
 [profile.release-opt]
 inherits = "release"

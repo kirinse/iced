@@ -615,25 +615,21 @@ where
                     keyboard::KeyCode::C
                         if state.keyboard_modifiers.command() =>
                     {
-                        match state.cursor.selection(value) {
-                            Some((start, end)) => {
-                                clipboard.write(
-                                    value.select(start, end).to_string(),
-                                );
-                            }
-                            None => {}
+                        if let Some((start, end)) =
+                            state.cursor.selection(value)
+                        {
+                            clipboard
+                                .write(value.select(start, end).to_string());
                         }
                     }
                     keyboard::KeyCode::X
                         if state.keyboard_modifiers.command() =>
                     {
-                        match state.cursor.selection(value) {
-                            Some((start, end)) => {
-                                clipboard.write(
-                                    value.select(start, end).to_string(),
-                                );
-                            }
-                            None => {}
+                        if let Some((start, end)) =
+                            state.cursor.selection(value)
+                        {
+                            clipboard
+                                .write(value.select(start, end).to_string());
                         }
 
                         let mut editor = Editor::new(value, &mut state.cursor);
@@ -716,14 +712,14 @@ where
                 }
 
                 return event::Status::Captured;
+            } else {
+                state.is_pasting = None;
             }
         }
         Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
             let state = state();
 
-            if state.is_focused {
-                state.keyboard_modifiers = modifiers;
-            }
+            state.keyboard_modifiers = modifiers;
         }
         _ => {}
     }

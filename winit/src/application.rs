@@ -9,7 +9,7 @@ use crate::mouse;
 use crate::renderer;
 use crate::widget::operation;
 use crate::{
-    Command, Debug, Error, Executor, Mode, Proxy, Runtime, Settings, Size,
+    Command, Debug, Error, Executor, Proxy, Runtime, Settings, Size,
     Subscription,
 };
 
@@ -81,16 +81,6 @@ where
         Subscription::none()
     }
 
-    /// Returns the current [`Application`] mode.
-    ///
-    /// The runtime will automatically transition your application if a new mode
-    /// is returned.
-    ///
-    /// By default, an application will run in windowed mode.
-    fn mode(&self) -> Mode {
-        Mode::Windowed
-    }
-
     /// Returns the scale factor of the [`Application`].
     ///
     /// It can be used to dynamically control the size of the UI at runtime
@@ -126,12 +116,12 @@ where
 {
     use futures::task;
     use futures::Future;
-    use winit::event_loop::EventLoop;
+    use winit::event_loop::EventLoopBuilder;
 
     let mut debug = Debug::new();
     debug.startup_started();
 
-    let event_loop = EventLoop::with_user_event();
+    let event_loop = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
 
     let runtime = {
@@ -149,7 +139,6 @@ where
 
     let builder = settings.window.into_builder(
         &application.title(),
-        application.mode(),
         event_loop.primary_monitor(),
         settings.id,
     );
@@ -197,7 +186,7 @@ where
     platform::run(event_loop, move |event, _, control_flow| {
         use winit::event_loop::ControlFlow;
 
-        if let ControlFlow::Exit = control_flow {
+        if let ControlFlow::ExitWithCode(_) = control_flow {
             return;
         }
 
@@ -383,6 +372,7 @@ async fn run_instance<A, E, C>(
                 event::MacOS::ReceivedUrl(url),
             )) => {
                 use iced_native::event;
+
                 events.push(iced_native::Event::PlatformSpecific(
                     event::PlatformSpecific::MacOS(event::MacOS::ReceivedUrl(
                         url,
@@ -637,6 +627,24 @@ pub fn run_command<A, E>(
                         y,
                     });
                 }
+                window::Action::SetMode(mode) => {
+                    window.set_visible(conversion::visible(mode));
+                    window.set_fullscreen(conversion::fullscreen(
+                        window.primary_monitor(),
+                        mode,
+                    ));
+                }
+                window::Action::FetchMode(tag) => {
+                    let mode = if window.is_visible().unwrap_or(true) {
+                        conversion::mode(window.fullscreen())
+                    } else {
+                        window::Mode::Hidden
+                    };
+
+                    proxy
+                        .send_event(tag(mode))
+                        .expect("Send message to event loop");
+                }
             },
             command::Action::System(action) => match action {
                 system::Action::QueryInformation(_tag) => {
@@ -709,7 +717,7 @@ mod platform {
     {
         use winit::platform::run_return::EventLoopExtRunReturn;
 
-        event_loop.run_return(event_handler);
+        let _ = event_loop.run_return(event_handler);
 
         Ok(())
     }

@@ -174,8 +174,10 @@ pub mod clipboard;
 pub mod executor;
 pub mod keyboard;
 pub mod mouse;
+pub mod overlay;
 pub mod settings;
 pub mod time;
+pub mod touch;
 pub mod widget;
 pub mod window;
 
@@ -210,8 +212,8 @@ pub use theme::Theme;
 pub use runtime::alignment;
 pub use runtime::futures;
 pub use runtime::{
-    Alignment, Background, Color, Command, ContentFit, Font, Length, Padding,
-    Point, Rectangle, Size, Vector,
+    color, Alignment, Background, Color, Command, ContentFit, Font, Length,
+    Padding, Point, Rectangle, Size, Vector,
 };
 
 #[cfg(feature = "system")]

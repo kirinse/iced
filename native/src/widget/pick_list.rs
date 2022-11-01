@@ -348,9 +348,9 @@ where
             let state = state();
 
             let event_status = if state.is_open {
-                // TODO: Encode cursor availability in the type system
-                state.is_open =
-                    cursor_position.x < 0.0 || cursor_position.y < 0.0;
+                // Event wasn't processed by overlay, so cursor was clicked either outside it's
+                // bounds or on the drop-down, either way we close the overlay.
+                state.is_open = false;
 
                 event::Status::Captured
             } else if layout.bounds().contains(cursor_position) {
@@ -543,9 +543,11 @@ pub fn draw<T, Renderer>(
             content: label,
             size: text_size,
             font: font.clone(),
-            color: is_selected
-                .then(|| style.text_color)
-                .unwrap_or(style.placeholder_color),
+            color: if is_selected {
+                style.text_color
+            } else {
+                style.placeholder_color
+            },
             bounds: Rectangle {
                 x: bounds.x + f32::from(padding.left),
                 y: bounds.center_y() - text_size / 2.0,

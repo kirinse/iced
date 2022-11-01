@@ -13,6 +13,8 @@ use crate::{
     Shell, Size, Vector, Widget,
 };
 
+use std::borrow::Cow;
+
 /// An element to display a widget over another.
 #[allow(missing_debug_implementations)]
 pub struct Tooltip<'a, Message, Renderer: text::Renderer>
@@ -21,10 +23,11 @@ where
     Renderer::Theme: container::StyleSheet + widget::text::StyleSheet,
 {
     content: Element<'a, Message, Renderer>,
-    tooltip: Text<Renderer>,
+    tooltip: Text<'a, Renderer>,
     position: Position,
     gap: u16,
     padding: u16,
+    snap_within_viewport: bool,
     style: <Renderer::Theme as container::StyleSheet>::Style,
 }
 
@@ -41,15 +44,16 @@ where
     /// [`Tooltip`]: struct.Tooltip.html
     pub fn new(
         content: impl Into<Element<'a, Message, Renderer>>,
-        tooltip: impl ToString,
+        tooltip: impl Into<Cow<'a, str>>,
         position: Position,
     ) -> Self {
         Tooltip {
             content: content.into(),
-            tooltip: Text::new(tooltip.to_string()),
+            tooltip: Text::new(tooltip),
             position,
             gap: 0,
             padding: Self::DEFAULT_PADDING,
+            snap_within_viewport: true,
             style: Default::default(),
         }
     }
@@ -77,6 +81,12 @@ where
     /// Sets the padding of the [`Tooltip`].
     pub fn padding(mut self, padding: u16) -> Self {
         self.padding = padding;
+        self
+    }
+
+    /// Sets whether the [`Tooltip`] is snapped within the viewport.
+    pub fn snap_within_viewport(mut self, snap: bool) -> Self {
+        self.snap_within_viewport = snap;
         self
     }
 
@@ -151,7 +161,7 @@ where
     ) -> mouse::Interaction {
         self.content.as_widget().mouse_interaction(
             &tree.children[0],
-            layout.children().next().unwrap(),
+            layout,
             cursor_position,
             viewport,
             renderer,
@@ -190,6 +200,7 @@ where
             self.position,
             self.gap,
             self.padding,
+            self.snap_within_viewport,
             self.style,
             |renderer, limits| {
                 Widget::<(), Renderer>::layout(tooltip, renderer, limits)
@@ -263,6 +274,7 @@ pub fn draw<Renderer>(
     position: Position,
     gap: u16,
     padding: u16,
+    snap_within_viewport: bool,
     style: <Renderer::Theme as container::StyleSheet>::Style,
     layout_text: impl FnOnce(&Renderer, &layout::Limits) -> layout::Node,
     draw_text: impl FnOnce(
@@ -290,8 +302,13 @@ pub fn draw<Renderer>(
 
         let text_layout = layout_text(
             renderer,
-            &layout::Limits::new(Size::ZERO, viewport.size())
-                .pad(Padding::new(padding)),
+            &layout::Limits::new(
+                Size::ZERO,
+                snap_within_viewport
+                    .then(|| viewport.size())
+                    .unwrap_or(Size::INFINITY),
+            )
+            .pad(Padding::new(padding)),
         );
 
         let padding = f32::from(padding);
@@ -331,25 +348,27 @@ pub fn draw<Renderer>(
             }
         };
 
-        if tooltip_bounds.x < viewport.x {
-            tooltip_bounds.x = viewport.x;
-        } else if viewport.x + viewport.width
-            < tooltip_bounds.x + tooltip_bounds.width
-        {
-            tooltip_bounds.x =
-                viewport.x + viewport.width - tooltip_bounds.width;
+        if snap_within_viewport {
+            if tooltip_bounds.x < viewport.x {
+                tooltip_bounds.x = viewport.x;
+            } else if viewport.x + viewport.width
+                < tooltip_bounds.x + tooltip_bounds.width
+            {
+                tooltip_bounds.x =
+                    viewport.x + viewport.width - tooltip_bounds.width;
+            }
+
+            if tooltip_bounds.y < viewport.y {
+                tooltip_bounds.y = viewport.y;
+            } else if viewport.y + viewport.height
+                < tooltip_bounds.y + tooltip_bounds.height
+            {
+                tooltip_bounds.y =
+                    viewport.y + viewport.height - tooltip_bounds.height;
+            }
         }
 
-        if tooltip_bounds.y < viewport.y {
-            tooltip_bounds.y = viewport.y;
-        } else if viewport.y + viewport.height
-            < tooltip_bounds.y + tooltip_bounds.height
-        {
-            tooltip_bounds.y =
-                viewport.y + viewport.height - tooltip_bounds.height;
-        }
-
-        renderer.with_layer(*viewport, |renderer| {
+        renderer.with_layer(Rectangle::with_size(Size::INFINITY), |renderer| {
             container::draw_background(renderer, &style, tooltip_bounds);
 
             draw_text(
